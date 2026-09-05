@@ -41,6 +41,8 @@ if [[ -f "$SRC_CFG" ]]; then
         -e 's|^#define \(_EVENT_HAVE_SYS_EPOLL[A-Z_]*\).*|/* #undef \1 */|' \
         -e 's|^#define \(_EVENT_HAVE_[A-Z_]*EVENTFD[A-Z_]*\).*|/* #undef \1 */|' \
         -e 's|^#define \(_EVENT_HAVE_[A-Z_]*TIMERFD[A-Z_]*\).*|/* #undef \1 */|' \
+        -e 's|^#define \(_EVENT_HAVE_[A-Z_]*SENDFILE[A-Z_]*\).*|/* #undef \1 */|' \
+        -e 's|^#define \(_EVENT_HAVE_[A-Z_]*SYS_MMAN[A-Z_]*\).*|/* #undef \1 */|' \
         -e 's|^#define \(_EVENT_HAVE_DEVPOLL[A-Z_]*\).*|/* #undef \1 */|' \
         "$SRC_CFG"
     printf '\n/* iOS adjustments */\n#ifndef _EVENT_HAVE_KQUEUE\n#define _EVENT_HAVE_KQUEUE 1\n#endif\n#ifndef _EVENT_HAVE_SYS_EVENT_H\n#define _EVENT_HAVE_SYS_EVENT_H 1\n#endif\n#ifndef _EVENT_HAVE_SYS_SOCKET_H\n#define _EVENT_HAVE_SYS_SOCKET_H 1\n#endif\n#ifndef _EVENT_HAVE_NETINET_IN_H\n#define _EVENT_HAVE_NETINET_IN_H 1\n#endif\n#ifndef _EVENT_HAVE_ARPA_INET_H\n#define _EVENT_HAVE_ARPA_INET_H 1\n#endif\n'
