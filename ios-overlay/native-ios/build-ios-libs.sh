@@ -95,8 +95,8 @@ SPM_INCS="ygoserver/spmemvfs;sqlite3"
 OCG_INCS="ocgcore;lua/src"
 YGO_INCS="ygoserver/spmemvfs;ygoserver;ocgcore;event/android;event/include;event;sqlite3;irrlicht/source/Irrlicht;irrlicht/include"
 
-# lua(C,静态)
-build_lib lua c "$LUA_INCS" "-DLUA_USE_POSIX;-fexceptions" \
+# lua(C,静态;iOS:system() 不可用 → l_system 空操作;补 getlocaledecpoint 宏)
+build_lib lua c "$LUA_INCS" "-DLUA_USE_POSIX;-fexceptions;-Dl_system(cmd)=(void)0;-Dgetlocaledecpoint()='.'" \
   lua/src/lapi.c lua/src/lauxlib.c lua/src/lbaselib.c lua/src/lcode.c lua/src/lcorolib.c lua/src/lctype.c \
   lua/src/ldblib.c lua/src/ldebug.c lua/src/ldo.c lua/src/ldump.c lua/src/lfunc.c lua/src/lgc.c lua/src/linit.c \
   lua/src/liolib.c lua/src/llex.c lua/src/lmathlib.c lua/src/lmem.c lua/src/loadlib.c lua/src/lobject.c \
