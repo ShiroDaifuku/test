@@ -76,12 +76,14 @@ build_lib() { # name srcKind incs defs ... 文件列表(每行一个相对 NC �
     if [[ ! -f "$f" ]]; then echo "[ios-native] MISSING $src"; continue; fi
     o="$objdir/$(echo "$src" | tr '/' '_' | tr '.' '_').o"
     if [[ "$kind" == "c" ]]; then
-      "$CC" $C_FLAGS "${defargs[@]}" "${incargs[@]}" -c "$f" -o "$o" || { echo "CC FAIL $src"; exit 1; }
+      # bash3-safe: 空数组在 set -u 下需守卫展开
+      "$CC" $C_FLAGS ${defargs[@]+"${defargs[@]}"} ${incargs[@]+"${incargs[@]}"} -c "$f" -o "$o" || { echo "CC FAIL $src"; exit 1; }
     else
-      "$CXX" $CXX_FLAGS "${defargs[@]}" "${incargs[@]}" -c "$f" -o "$o" || { echo "CXX FAIL $src"; exit 1; }
+      "$CXX" $CXX_FLAGS ${defargs[@]+"${defargs[@]}"} ${incargs[@]+"${incargs[@]}"} -c "$f" -o "$o" || { echo "CXX FAIL $src"; exit 1; }
     fi
     objs+=("$o")
   done
+  if [[ ${#objs[@]} -eq 0 ]]; then echo "[ios-native] NO OBJECTS for $name"; exit 1; fi
   "$AR" rcs "$OUT/lib$name.a" "${objs[@]}" || { echo "AR FAIL $name"; exit 1; }
   echo "[ios-native] lib$name.a ($(ls -la "$OUT/lib$name.a" | awk '{print $5}') bytes, ${#objs[@]} objs)"
 }
