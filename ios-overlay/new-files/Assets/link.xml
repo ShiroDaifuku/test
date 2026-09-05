@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- IL2CPP 裁剪保留清单(草稿 v1):按 iOS 真机第一轮运行期缺失逐步增补 -->
+<linker>
+  <!-- 运行时频繁用反射/序列化的库先整体保留,包体代价在联调后再收紧 -->
+  <assembly fullname="Unity.Addressables" preserve="all" />
+  <assembly fullname="Unity.ResourceManager" preserve="all" />
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+  <assembly fullname="Mono.Data.Sqlite" preserve="all" />
+  <assembly fullname="System.Data" preserve="all" />
+  <assembly fullname="Assembly-CSharp" preserve="all" />
+</linker>
