@@ -54,10 +54,9 @@ jobs:
       # TODO(P2 正文):依据上述 android 配方(CMake/ndk-build?)为 iOS 增加工具链配置,
       # 产出 ocgcore/libocgcore.a、ygoserver/libygoserver.a(sqlite3 可用 Apple 系统库 -lsqlite3 替代)。
       # 参考:社区 YGOMobile-cn-ko-en 已有 ocgcore iOS 交叉编译配方。
-      - name: 交叉编译 iOS 静态库(占位,待配方)
+      - name: 交叉编译 iOS 静态库(bash 脚本,产物到 /tmp/ios-libs)
         run: |
-          echo "native cross-compile recipe to be filled after android/windows build scripts reviewed"
-          # 期望产物:/tmp/ios-libs/{libocgcore.a,libygoserver.a}(arm64)
+          bash overlay/ios-overlay/native-ios/build-ios-libs.sh "$(pwd)/src/mdpro3" /tmp/ios-libs
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
