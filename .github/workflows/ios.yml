@@ -56,8 +56,6 @@ jobs:
       IOS_BUNDLE_ID: com.shirodaifuku.mdpro3
       IOS_TARGET_OS: '16.0'
       IOS_OUTPUT: ${{ github.workspace }}/work/project/Build/iOS
-      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
       UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
     steps:
       - name: checkout overlay
@@ -98,8 +96,7 @@ jobs:
           allowDirtyBuild: true
           buildName: Unity-iPhone
         env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
       - name: xcodebuild(免签仅编译验证)
         run: |
           set -e
