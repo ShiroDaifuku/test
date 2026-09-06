@@ -231,10 +231,38 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
+  publish-ipa:
+    if: ${{ github.event.inputs.mode == 'publish' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: 拉取 IPA 分片构件
+        uses: actions/download-artifact@v4
+        with:
+          name: mdpro3-ipa-parts
+          path: parts
+      - name: 上传为公开 release 资产
+        run: |
+          set -e
+          ls -la parts
+          API="https://api.github.com/repos/ShiroDaifuku/test"
+          UPLOAD_URL=$(curl -sS -H "Authorization: Bearer ${{ github.token }}" -H "Accept: application/vnd.github+json" "$API/releases/tags/xcode-proj" | python3 -c "import sys,json;print(json.load(sys.stdin)['upload_url'])")
+          i=1
+          for f in parts/*; do
+            name="mdpro3-ipa.part$i.bin"
+            url="${UPLOAD_URL%%\{*}?name=$name"
+            echo "uploading $f -> $name"
+            RESP=$(curl -sS -X POST -H "Authorization: Bearer ${{ github.token }}" -H "Content-Type: application/octet-stream" --data-binary "@$f" "$url")
+            echo "$RESP" | python3 -c "import sys,json;print('   URL:',json.load(sys.stdin).get('browser_download_url','?'))"
+            i=$((i+1))
+          done
+          echo "publish done"
+
   finish:
     if: always()
     runs-on: ubuntu-latest
-    needs: [native-libs, unity-xcode, xcode-build]
+    needs: [native-libs, unity-xcode, xcode-build, publish-ipa]
     steps:
       - name: 汇总(各 job 自带 if,按 mode 只跑其一)
         run: echo "done mode=${{ github.event.inputs.mode }}"
