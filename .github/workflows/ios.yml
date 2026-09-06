@@ -236,12 +236,15 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      actions: read
     steps:
-      - name: 拉取 IPA 分片构件
+      - name: 拉取 IPA 分片构件(来自 run #22)
         uses: actions/download-artifact@v4
         with:
           name: mdpro3-ipa-parts
           path: parts
+          run-id: 34032585343
+          github-token: ${{ github.token }}
       - name: 上传为公开 release 资产
         run: |
           set -e
