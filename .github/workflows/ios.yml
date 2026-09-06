@@ -118,23 +118,97 @@ jobs:
   xcode-build:
     if: ${{ github.event.inputs.mode == 'xcode' }}
     runs-on: macos-latest
+    env:
+      CERTIFICATE_P12: ${{ secrets.CERTIFICATE_P12 }}
+      CERTIFICATE_PASSWORD: ${{ secrets.CERTIFICATE_PASSWORD }}
+      PROVISIONING_PROFILE: ${{ secrets.PROVISIONING_PROFILE }}
+      PROFILE_NAME: ${{ secrets.PROFILE_NAME }}
+      TEAM_ID: ${{ secrets.TEAM_ID }}
     steps:
       - name: 下载本机导出的 Xcode 工程(公共 release 资产)
         run: |
           curl -fL -o /tmp/xcode.zip "https://github.com/ShiroDaifuku/test/releases/download/xcode-proj/mdpro3-xcode.zip"
           mkdir -p work && cd work && unzip -q /tmp/xcode.zip && ls -la
-      - name: xcodebuild 免签编译
+      - name: 安装签名证书与描述文件
         run: |
+          set -u
+          KEYCHAIN="build.keychain"
+          KEYCHAIN_PASS="ios-build"
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security default-keychain -s "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" login.keychain-db
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security set-keychain-settings -t 3600 -u "$KEYCHAIN"
+          echo "$CERTIFICATE_P12" | base64 --decode > /tmp/cert.p12
+          if security import /tmp/cert.p12 -k "$KEYCHAIN" -P "$CERTIFICATE_PASSWORD" \
+              -T /usr/bin/codesign -T /usr/bin/security -A 2>/tmp/import_direct.log; then
+            echo "p12 direct import ok"
+          else
+            OPENSSL3=""
+            for c in "/opt/homebrew/opt/openssl@3/bin/openssl" "/usr/local/opt/openssl@3/bin/openssl"; do
+              [ -x "$c" ] && OPENSSL3="$c" && break
+            done
+            if [ -z "$OPENSSL3" ]; then brew install openssl@3 >/dev/null 2>&1 || true; fi
+            for c in "/opt/homebrew/opt/openssl@3/bin/openssl" "/usr/local/opt/openssl@3/bin/openssl"; do
+              [ -x "$c" ] && OPENSSL3="$c" && break
+            done
+            "$OPENSSL3" pkcs12 -in /tmp/cert.p12 -passin pass:"$CERTIFICATE_PASSWORD" -nodes -legacy -out /tmp/cert.pem 2>/dev/null \
+              || "$OPENSSL3" pkcs12 -in /tmp/cert.p12 -passin pass:"$CERTIFICATE_PASSWORD" -nodes -out /tmp/cert.pem
+            security import /tmp/cert.pem -k "$KEYCHAIN" -T /usr/bin/codesign -T /usr/bin/security -A
+          fi
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo "$PROVISIONING_PROFILE" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision"
+          IDENTITIES="$(security find-identity -v -p codesigning "$KEYCHAIN" 2>/dev/null || true)"
+          echo "$IDENTITIES"
+          if ! echo "$IDENTITIES" | grep -q "iPhone Distribution"; then
+            echo "::error::未找到 iPhone Distribution 身份"; exit 1
+          fi
+          security cms -D -i "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision" > /tmp/profile.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Print :Name" /tmp/profile.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/profile.plist 2>/dev/null || true
+      - name: Archive(签名编译)
+        run: |
+          set -e
           cd work/iOS
           xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone \
-            -configuration Release -sdk iphoneos \
-            CODE_SIGNING_ALLOWED=NO \
-            -derivedDataPath /tmp/dd build
-      - name: 上传未签名 App(架构验证)
+            -configuration Release -destination 'generic/platform=iOS' \
+            -archivePath /tmp/mdpro3.xcarchive \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="iPhone Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            archive
+      - name: Export IPA (ad-hoc)
+        run: |
+          cat > /tmp/exportOptions.plist <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>ad-hoc</string>
+              <key>teamID</key>
+              <string>$TEAM_ID</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>app.eggplant4431.lotus8340</key>
+                  <string>$PROFILE_NAME</string>
+              </dict>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive -archivePath /tmp/mdpro3.xcarchive -exportPath /tmp/export -exportOptionsPlist /tmp/exportOptions.plist
+          ls -la /tmp/export
+      - name: 上传签名 IPA
         uses: actions/upload-artifact@v4
         with:
-          name: unity-ios-unsigned
-          path: /tmp/dd/Build/Products/Release-iphoneos/*.app
+          name: mdpro3-ipa
+          path: /tmp/export/*.ipa
           if-no-files-found: error
 
   finish:
