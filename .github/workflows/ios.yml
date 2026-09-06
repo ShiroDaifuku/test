@@ -81,6 +81,12 @@ jobs:
       - name: 应用 iOS 覆盖层(overlay.js:补丁 + 新文件)
         run: |
           node overlay/ios-overlay/overlay.js "$(pwd)/work/project"
+      - name: 工程初始化为 git 仓库(unity-builder 内部依赖 git 命令)
+        run: |
+          cd work/project
+          git init -q
+          git add -A
+          git -c user.email=ci@local -c user.name=ci commit -qm init
       # 注:GameCI v4 Personal 许可 = UNITY_LICENSE(.ulf 内容) secret,builder 自带激活,无需单独 activator
       - name: 安装 Unity + iOS 模块并导出 Xcode 工程
         uses: game-ci/unity-builder@v4
