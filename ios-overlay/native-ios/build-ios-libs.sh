@@ -44,6 +44,8 @@ if [[ -f "$SRC_CFG" ]]; then
         -e 's|^#define \(_EVENT_HAVE_[A-Z_]*SENDFILE[A-Z_]*\).*|/* #undef \1 */|' \
         -e 's|^#define \(_EVENT_HAVE_[A-Z_]*NETINET_IN6[A-Z_]*\).*|/* #undef \1 */|' \
         -e 's|^#define \(_EVENT_HAVE_[A-Z_]*SYS_SENDFILE[A-Z_]*\).*|/* #undef \1 */|' \
+        -e 's|^#define \(_EVENT_HAVE_SELECT[A-Z_]*\).*|/* #undef \1 */|' \
+        -e 's|^#define \(_EVENT_HAVE_POLL[A-Z_]*\).*|/* #undef \1 */|' \
         -e 's|^#define \(_EVENT_HAVE_DEVPOLL[A-Z_]*\).*|/* #undef \1 */|' \
         "$SRC_CFG"
     printf '\n/* iOS adjustments */\n#ifndef _EVENT_HAVE_KQUEUE\n#define _EVENT_HAVE_KQUEUE 1\n#endif\n#ifndef _EVENT_HAVE_SYS_EVENT_H\n#define _EVENT_HAVE_SYS_EVENT_H 1\n#endif\n#ifndef _EVENT_HAVE_SYS_SOCKET_H\n#define _EVENT_HAVE_SYS_SOCKET_H 1\n#endif\n#ifndef _EVENT_HAVE_NETINET_IN_H\n#define _EVENT_HAVE_NETINET_IN_H 1\n#endif\n#ifndef _EVENT_HAVE_ARPA_INET_H\n#define _EVENT_HAVE_ARPA_INET_H 1\n#endif\n'
@@ -118,7 +120,7 @@ build_lib event c "$EVENT_INCS" "" \
   event/listener.c event/evmap.c event/log.c event/evutil.c event/strlcpy.c event/signal.c \
   event/bufferevent_filter.c event/evthread.c event/evthread_pthread.c event/bufferevent_ratelim.c \
   event/evutil_rand.c event/event_tagging.c event/http.c event/evdns.c event/evrpc.c \
-  event/kqueue.c event/poll.c event/select.c
+  event/kqueue.c
 
 # irrlicht(zipreader 子集;premake: 关异常/RTTI)
 build_lib irrlicht cxx "$IRR_INCS" "-D_IRR_STATIC_LIB_;-DNO_IRR_COMPILE_WITH_ZIP_ENCRYPTION_;-DNO_IRR_COMPILE_WITH_BZIP2_;-DNO__IRR_COMPILE_WITH_MOUNT_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_PAK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_NPK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_TAR_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_WAD_ARCHIVE_LOADER_;-fno-exceptions;-fno-rtti" \
