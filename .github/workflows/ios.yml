@@ -58,6 +58,7 @@ jobs:
       IOS_OUTPUT: ${{ github.workspace }}/work/project/Build/iOS
       UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
       UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
     steps:
       - name: checkout overlay
         uses: actions/checkout@v4
@@ -80,13 +81,7 @@ jobs:
       - name: 应用 iOS 覆盖层(overlay.js:补丁 + 新文件)
         run: |
           node overlay/ios-overlay/overlay.js "$(pwd)/work/project"
-      - name: 激活 Unity Personal 许可(game-ci)
-        uses: game-ci/unity-license-activator@v3
-        with:
-          unityVersion: ${{ github.event.inputs.unity_version }}
-        env:
-          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
-          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+      # 注:GameCI v4 Personal 许可 = UNITY_LICENSE(.ulf 内容) secret,builder 自带激活,无需单独 activator
       - name: 安装 Unity + iOS 模块并导出 Xcode 工程
         uses: game-ci/unity-builder@v4
         with:
