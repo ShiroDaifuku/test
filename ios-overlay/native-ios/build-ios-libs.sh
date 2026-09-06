@@ -128,7 +128,7 @@ build_lib event c "$EVENT_INCS" "" \
   event/kqueue.c
 
 # irrlicht(zipreader 子集;zlib 的 .c 必须以 C 编译 → c: 前缀;premake: 关异常/RTTI)
-build_lib irrlicht cxx "$IRR_INCS" "-D_IRR_STATIC_LIB_;-DNO_IRR_COMPILE_WITH_ZIP_ENCRYPTION_;-DNO_IRR_COMPILE_WITH_BZIP2_;-DNO__IRR_COMPILE_WITH_MOUNT_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_PAK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_NPK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_TAR_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_WAD_ARCHIVE_LOADER_;-fno-exceptions;-fno-rtti" \
+build_lib irrlicht cxx "$IRR_INCS" "-DZ_SOLO;-D_IRR_STATIC_LIB_;-DNO_IRR_COMPILE_WITH_ZIP_ENCRYPTION_;-DNO_IRR_COMPILE_WITH_BZIP2_;-DNO__IRR_COMPILE_WITH_MOUNT_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_PAK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_NPK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_TAR_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_WAD_ARCHIVE_LOADER_;-fno-exceptions;-fno-rtti" \
   irrlicht/source/Irrlicht/os.cpp \
   c:irrlicht/source/Irrlicht/zlib/adler32.c c:irrlicht/source/Irrlicht/zlib/crc32.c c:irrlicht/source/Irrlicht/zlib/inffast.c \
   c:irrlicht/source/Irrlicht/zlib/inflate.c c:irrlicht/source/Irrlicht/zlib/inftrees.c c:irrlicht/source/Irrlicht/zlib/zutil.c \
