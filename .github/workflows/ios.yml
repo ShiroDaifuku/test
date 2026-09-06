@@ -208,12 +208,6 @@ jobs:
           name: mdpro3-ipa
           path: /tmp/export/MDPro3.ipa
           if-no-files-found: error
-      - name: 上传签名 IPA
-        uses: actions/upload-artifact@v4
-        with:
-          name: mdpro3-ipa
-          path: /tmp/export/*.ipa
-          if-no-files-found: error
 
   finish:
     if: always()
