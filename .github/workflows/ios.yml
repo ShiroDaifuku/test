@@ -167,43 +167,47 @@ jobs:
           security cms -D -i "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision" > /tmp/profile.plist 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Print :Name" /tmp/profile.plist 2>/dev/null || true
           /usr/libexec/PlistBuddy -c "Print :Entitlements:application-identifier" /tmp/profile.plist 2>/dev/null || true
-      - name: Archive(签名编译)
+      - name: 免签编译 Release App
         run: |
           set -e
           cd work/iOS
           xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone \
-            -configuration Release -destination 'generic/platform=iOS' \
-            -archivePath /tmp/mdpro3.xcarchive \
-            DEVELOPMENT_TEAM="$TEAM_ID" \
-            CODE_SIGN_STYLE=Manual \
-            CODE_SIGN_IDENTITY="iPhone Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
-            archive
-      - name: Export IPA (ad-hoc)
+            -configuration Release -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath /tmp/dd build
+      - name: 手动 codesign(UnityFramework + App)并打包 ipa
         run: |
-          cat > /tmp/exportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>ad-hoc</string>
-              <key>teamID</key>
-              <string>$TEAM_ID</string>
-              <key>signingStyle</key>
-              <string>manual</string>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>provisioningProfiles</key>
-              <dict>
-                  <key>app.eggplant4431.lotus8340</key>
-                  <string>$PROFILE_NAME</string>
-              </dict>
-          </dict>
-          </plist>
-          EOF
-          xcodebuild -exportArchive -archivePath /tmp/mdpro3.xcarchive -exportPath /tmp/export -exportOptionsPlist /tmp/exportOptions.plist
+          set -e
+          APP_DIR="/tmp/dd/Build/Products/Release-iphoneos"
+          APP="$(ls -d "$APP_DIR"/*.app | head -1)"
+          echo "APP=$APP"
+          # 1) 放入描述文件
+          cp "$HOME/Library/MobileDevice/Provisioning Profiles/profile.mobileprovision" "$APP/embedded.mobileprovision"
+          # 2) 提取签名身份完整名
+          IDENT="$(security find-identity -v -p codesigning | grep 'iPhone Distribution' | sed -E 's/.*"([^"]+)".*/\1/' | head -1)"
+          echo "IDENT=$IDENT"
+          # 3) 从描述文件提取 entitlements
+          security cms -D -i "$APP/embedded.mobileprovision" > /tmp/profile.plist
+          /usr/libexec/PlistBuddy -x -c "Print :Entitlements" /tmp/profile.plist > /tmp/entitlements.plist
+          # 4) 先签内嵌 framework(如有)
+          if [ -d "$APP/Frameworks/UnityFramework.framework" ]; then
+            codesign --force --sign "$IDENT" --timestamp=none "$APP/Frameworks/UnityFramework.framework"
+          fi
+          # 5) 签 App
+          codesign --force --sign "$IDENT" --entitlements /tmp/entitlements.plist --timestamp=none "$APP"
+          codesign --verify --deep --strict "$APP"
+          # 6) 组装 ipa
+          mkdir -p /tmp/export/Payload
+          cp -R "$APP" /tmp/export/Payload/
+          cd /tmp/export
+          zip -qry /tmp/export/MDPro3.ipa Payload
           ls -la /tmp/export
+      - name: 上传签名 IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: mdpro3-ipa
+          path: /tmp/export/MDPro3.ipa
+          if-no-files-found: error
       - name: 上传签名 IPA
         uses: actions/upload-artifact@v4
         with:
