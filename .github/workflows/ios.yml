@@ -1,20 +1,15 @@
-# iOS 云构建工作流 — 草稿 v1(待首轮联调细化)
+# iOS 云构建工作流 — v2(native 全绿;unity 模式待首轮联调)
 # 目标仓库:ShiroDaifuku/test(public)· 仓库内只放【改造覆盖层 + 构建脚本】,不放素材/发行包
-# 运行方式:workflow_dispatch(本地 build-ios.cjs 触发)
-# 两个模式:
-#   native —— 交叉编译 ocgcore/ygoserver/sqlite3 → iOS arm64 静态库(.a)
-#              ★ 不需要 Unity 许可,账号注册期间即可先跑通
-#   unity  —— 安装 Unity 6000.0.28f1 + iOS 模块,导出 Xcode 工程,xcodebuild + 签名出 ipa
-#              ★ 需要 Secrets:UNITY_EMAIL/UNITY_PASSWORD(+可选 UNITY_SERIAL)
-# 基线:构建时在 runner 上从上游公开地址拉取源码(固定 commit),再叠本项目覆盖层,
-#       从而 ShiroDaifuku/test 保持"纯自有内容"(合规考量,勿把上游/素材入库)。
+# 模式:
+#   native —— 交叉编译 8 个 iOS arm64 静态库(无需 Unity 许可)
+#   unity  —— 编译原生库 + 应用覆盖层 + Unity 导出 Xcode 工程 + 免签 xcodebuild
 name: ios
 
 on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'native(原生库,iOS .a) | unity(Xcode工程+签名ipa)'
+        description: 'native | unity'
         required: true
         default: 'native'
       upstream_zip:
@@ -44,31 +39,23 @@ jobs:
           mkdir -p src && cd src
           unzip -q /tmp/mdpro3.zip
           mv $(ls -d */ | head -1) mdpro3
-      - name: 输出 C++ 构建树信息(首轮调试用)
-        run: |
-          find src/mdpro3/'Tools/YGO Classes' -maxdepth 2 -type f | head -80
-          echo "---- build/android ----"
-          ls -laR src/mdpro3/'Tools/YGO Classes'/build/android 2>/dev/null | head -60
-          echo "---- build/windows ----"
-          ls -laR src/mdpro3/'Tools/YGO Classes'/build/windows 2>/dev/null | head -60
-      # TODO(P2 正文):依据上述 android 配方(CMake/ndk-build?)为 iOS 增加工具链配置,
-      # 产出 ocgcore/libocgcore.a、ygoserver/libygoserver.a(sqlite3 可用 Apple 系统库 -lsqlite3 替代)。
-      # 参考:社区 YGOMobile-cn-ko-en 已有 ocgcore iOS 交叉编译配方。
-      - name: 交叉编译 iOS 静态库(bash 脚本,产物到 /tmp/ios-libs)
+      - name: 交叉编译 iOS 静态库
         run: |
           bash overlay/ios-overlay/native-ios/build-ios-libs.sh "$(pwd)/src/mdpro3" /tmp/ios-libs
       - name: 上传产物
         uses: actions/upload-artifact@v4
         with:
           name: ios-native-libs
-          path: /tmp/ios-libs/
-          if-no-files-found: warn
+          path: /tmp/ios-libs/lib*.a
+          if-no-files-found: error
 
   unity-xcode:
     if: ${{ github.event.inputs.mode == 'unity' }}
     runs-on: macos-latest
     env:
-      IOS_BUNDLE_ID: ${{ secrets.IOS_BUNDLE_ID }}
+      IOS_BUNDLE_ID: com.shirodaifuku.mdpro3
+      IOS_TARGET_OS: '16.0'
+      IOS_OUTPUT: ${{ github.workspace }}/work/project/Build/iOS
       UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
       UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
     steps:
@@ -82,11 +69,17 @@ jobs:
           mkdir -p work && cd work
           unzip -q /tmp/mdpro3.zip
           mv $(ls -d */ | head -1) project
-      - name: 叠加本仓库 iOS 覆盖层(代码补丁/Editor 脚本/额外文件)
+      - name: 编译 iOS 原生库(lua/event/ocgcore/ygoserver 等 8 个 .a)
         run: |
-          rsync -a --ignore-existing overlay/ios-overlay/ work/project/ || true
-          # TODO: 若补丁以 git apply 形式维护,改为:
-          # cd work/project && git apply /overlay/patches/*.patch
+          bash overlay/ios-overlay/native-ios/build-ios-libs.sh "$(pwd)/work/project" /tmp/ios-libs
+      - name: 拷入原生库到 Assets/Plugins/iOS/
+        run: |
+          mkdir -p work/project/Assets/Plugins/iOS
+          cp /tmp/ios-libs/lib*.a work/project/Assets/Plugins/iOS/
+          ls -la work/project/Assets/Plugins/iOS/
+      - name: 应用 iOS 覆盖层(overlay.js:补丁 + 新文件)
+        run: |
+          node overlay/ios-overlay/overlay.js "$(pwd)/work/project"
       - name: 激活 Unity Personal 许可(game-ci)
         uses: game-ci/unity-license-activator@v3
         with:
@@ -94,7 +87,6 @@ jobs:
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-          # 若 Personal 激活需要,再加 UNITY_SERIAL
       - name: 安装 Unity + iOS 模块并导出 Xcode 工程
         uses: game-ci/unity-builder@v4
         with:
@@ -103,13 +95,14 @@ jobs:
           projectPath: work/project
           buildMethod: MDPro3iOSBuild.Build
           allowDirtyBuild: true
+          buildName: Unity-iPhone
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
-      # unity-builder 输出在 work/project/Build/iOS(由 MDPro3iOSBuild 指定)
       - name: xcodebuild(免签仅编译验证)
         run: |
           set -e
+          ls -la work/project/Build/iOS | head -30
           cd work/project/Build/iOS
           xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone \
             -configuration Release -sdk iphoneos \
