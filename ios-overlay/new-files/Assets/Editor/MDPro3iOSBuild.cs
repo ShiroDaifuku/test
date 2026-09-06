@@ -34,9 +34,8 @@ public static class MDPro3iOSBuild
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.iOS, ScriptingImplementation.IL2CPP);
             PlayerSettings.SetArchitecture(BuildTargetGroup.iOS, 1 /*ARM64*/);
 
-            // iOS 版本与设备目标
+            // iOS 版本与设备目标(6000 已移除 iOSSdkVersion.Device,默认即为 Device)
             PlayerSettings.iOS.targetOSVersionString = targetOs;   // 例 "16.0"
-            PlayerSettings.iOS.sdkVersion = iOSSdkVersion.Device;  // 真机包;模拟器联调时改 Simulator
             PlayerSettings.iOS.targetDevice = iOSTargetDevice.iPhoneAndiPad;
 
             // 界面方向(先自动旋转;若联调发现卡牌对局需横屏,改 Landscape)

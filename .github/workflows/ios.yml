@@ -115,10 +115,32 @@ jobs:
       # TODO(P1 后期):签名步骤 —— 以 base64 Secrets 存 p12/mobileprovision,
       #  创建临时 keychain → codesign → 打包 Payload/*.app → .ipa(参考 LingChat 阶段做法)。
 
+  xcode-build:
+    if: ${{ github.event.inputs.mode == 'xcode' }}
+    runs-on: macos-latest
+    steps:
+      - name: 下载本机导出的 Xcode 工程(公共 release 资产)
+        run: |
+          curl -fL -o /tmp/xcode.zip "https://github.com/ShiroDaifuku/test/releases/download/xcode-proj/mdpro3-xcode.zip"
+          mkdir -p work && cd work && unzip -q /tmp/xcode.zip && ls -la
+      - name: xcodebuild 免签编译
+        run: |
+          cd work/iOS
+          xcodebuild -project Unity-iPhone.xcodeproj -scheme Unity-iPhone \
+            -configuration Release -sdk iphoneos \
+            CODE_SIGNING_ALLOWED=NO \
+            -derivedDataPath /tmp/dd build
+      - name: 上传未签名 App(架构验证)
+        uses: actions/upload-artifact@v4
+        with:
+          name: unity-ios-unsigned
+          path: /tmp/dd/Build/Products/Release-iphoneos/Unity-iPhone.app
+          if-no-files-found: error
+
   finish:
     if: always()
     runs-on: ubuntu-latest
-    needs: [native-libs, unity-xcode]
+    needs: [native-libs, unity-xcode, xcode-build]
     steps:
       - name: 汇总(各 job 自带 if,按 mode 只跑其一)
         run: echo "done mode=${{ github.event.inputs.mode }}"
