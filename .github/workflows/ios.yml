@@ -125,10 +125,25 @@ jobs:
       PROFILE_NAME: ${{ secrets.PROFILE_NAME }}
       TEAM_ID: ${{ secrets.TEAM_ID }}
     steps:
-      - name: 下载本机导出的 Xcode 工程(公共 release 资产)
+      - name: 分片下载 Xcode 工程 tar 并拼接解包
         run: |
-          curl -fL -o /tmp/xcode.zip "https://github.com/ShiroDaifuku/test/releases/download/xcode-proj/mdpro3-xcode.zip"
-          mkdir -p work && cd work && unzip -q /tmp/xcode.zip && ls -la
+          set -e
+          mkdir -p work && cd work
+          ok=0
+          for i in $(seq 1 9); do
+            if curl -fL -sS -o "part.$i" "https://github.com/ShiroDaifuku/test/releases/download/xcode-proj/mdpro3-xcode.tar.part$i"; then
+              echo "part$i ok ($(du -h part.$i | cut -f1))"; ok=$i
+            else
+              echo "part$i missing; stop"; break
+            fi
+          done
+          [ "$ok" -ge 1 ] || { echo "no parts"; exit 1; }
+          cat part.1 part.2 part.3 part.4 part.5 part.6 part.7 part.8 part.9 > xcode.tar 2>/dev/null || true
+          # 防止空 part 文件混入;只拼接存在的
+          : > xcode.tar
+          for i in $(seq 1 9); do [ -s "part.$i" ] && cat "part.$i" >> xcode.tar; done
+          tar -xf xcode.tar
+          ls -d iOS && du -sh iOS
       - name: 安装签名证书与描述文件
         run: |
           set -u
@@ -202,12 +217,19 @@ jobs:
           cd /tmp/export
           zip -qry /tmp/export/MDPro3.ipa Payload
           ls -la /tmp/export
-      - name: 上传签名 IPA
+      - name: 分片 IPA 便于回传
+        run: |
+          set -e
+          mkdir -p /tmp/ipaparts
+          split -b 1800m /tmp/export/MDPro3.ipa /tmp/ipaparts/mdpro3-ipa.part
+          ls -la /tmp/ipaparts
+      - name: 上传签名 IPA 分片
         uses: actions/upload-artifact@v4
         with:
-          name: mdpro3-ipa
-          path: /tmp/export/MDPro3.ipa
+          name: mdpro3-ipa-parts
+          path: /tmp/ipaparts/
           if-no-files-found: error
+          retention-days: 3
 
   finish:
     if: always()
