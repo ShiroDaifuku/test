@@ -76,12 +76,17 @@ build_lib() { # name srcKind incs defs ... 文件列表(每行一个相对 NC �
   local IFS=';'
   for d in $defs; do defargs+=("$d"); done
   IFS=$' \t\n'
-  local src f o
+  local src f o use_kind
   for src in "$@"; do
+    use_kind="$kind"
+    case "$src" in
+      c:*) src="${src#c:}"; use_kind="c";;
+      cxx:*) src="${src#cxx:}"; use_kind="cxx";;
+    esac
     f="$NC/$src"
     if [[ ! -f "$f" ]]; then echo "[ios-native] MISSING $src"; continue; fi
     o="$objdir/$(echo "$src" | tr '/' '_' | tr '.' '_').o"
-    if [[ "$kind" == "c" ]]; then
+    if [[ "$use_kind" == "c" ]]; then
       # bash3-safe: 空数组在 set -u 下需守卫展开
       "$CC" $C_FLAGS ${defargs[@]+"${defargs[@]}"} ${incargs[@]+"${incargs[@]}"} -c "$f" -o "$o" || { echo "CC FAIL $src"; exit 1; }
     else
@@ -122,11 +127,11 @@ build_lib event c "$EVENT_INCS" "" \
   event/evutil_rand.c event/event_tagging.c event/http.c event/evdns.c event/evrpc.c \
   event/kqueue.c
 
-# irrlicht(zipreader 子集;premake: 关异常/RTTI)
+# irrlicht(zipreader 子集;zlib 的 .c 必须以 C 编译 → c: 前缀;premake: 关异常/RTTI)
 build_lib irrlicht cxx "$IRR_INCS" "-D_IRR_STATIC_LIB_;-DNO_IRR_COMPILE_WITH_ZIP_ENCRYPTION_;-DNO_IRR_COMPILE_WITH_BZIP2_;-DNO__IRR_COMPILE_WITH_MOUNT_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_PAK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_NPK_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_TAR_ARCHIVE_LOADER_;-DNO__IRR_COMPILE_WITH_WAD_ARCHIVE_LOADER_;-fno-exceptions;-fno-rtti" \
   irrlicht/source/Irrlicht/os.cpp \
-  irrlicht/source/Irrlicht/zlib/adler32.c irrlicht/source/Irrlicht/zlib/crc32.c irrlicht/source/Irrlicht/zlib/inffast.c \
-  irrlicht/source/Irrlicht/zlib/inflate.c irrlicht/source/Irrlicht/zlib/inftrees.c irrlicht/source/Irrlicht/zlib/zutil.c \
+  c:irrlicht/source/Irrlicht/zlib/adler32.c c:irrlicht/source/Irrlicht/zlib/crc32.c c:irrlicht/source/Irrlicht/zlib/inffast.c \
+  c:irrlicht/source/Irrlicht/zlib/inflate.c c:irrlicht/source/Irrlicht/zlib/inftrees.c c:irrlicht/source/Irrlicht/zlib/zutil.c \
   irrlicht/source/Irrlicht/CAttributes.cpp irrlicht/source/Irrlicht/CFileList.cpp irrlicht/source/Irrlicht/CFileSystem.cpp \
   irrlicht/source/Irrlicht/CLimitReadFile.cpp irrlicht/source/Irrlicht/CMemoryFile.cpp irrlicht/source/Irrlicht/CReadFile.cpp \
   irrlicht/source/Irrlicht/CWriteFile.cpp irrlicht/source/Irrlicht/CXMLReader.cpp irrlicht/source/Irrlicht/CXMLWriter.cpp \
