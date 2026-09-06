@@ -131,7 +131,7 @@ jobs:
           mkdir -p work && cd work
           ok=0
           for i in $(seq 1 9); do
-            if curl -fL -sS -o "part.$i" "https://github.com/ShiroDaifuku/test/releases/download/xcode-proj/mdpro3-xcode.tar.part$i"; then
+            if curl -fL -sS -o "part.$i" "https://github.com/ShiroDaifuku/test/releases/download/xcode-proj/mdpro3-fw.tar.part$i"; then
               echo "part$i ok ($(du -h part.$i | cut -f1))"; ok=$i
             else
               echo "part$i missing; stop"; break
