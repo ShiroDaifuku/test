@@ -12,6 +12,7 @@ using System.Linq;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEditor.iOS.Xcode;
 using UnityEngine;
 
 public static class MDPro3iOSBuild
@@ -58,6 +59,7 @@ public static class MDPro3iOSBuild
 
             if (report.summary.result != BuildResult.Succeeded)
                 throw new Exception("iOS build failed: " + report.summary.result + ", totalErrors=" + report.summary.totalErrors);
+            InjectFileSharing(outDir);
             Debug.Log("[MDPro3iOSBuild] SUCCESS -> " + outDir);
             EditorApplication.Exit(0);
         }
@@ -66,6 +68,19 @@ public static class MDPro3iOSBuild
             Debug.LogError("[MDPro3iOSBuild] FAILED: " + e);
             EditorApplication.Exit(1);
         }
+    }
+
+    // 开启 iTunes/文件App 文件共享:让用户可把内容文件夹拖入 App 的 Documents
+    static void InjectFileSharing(string outDir)
+    {
+        var plistPath = Path.Combine(outDir, "Info.plist");
+        if (!File.Exists(plistPath)) { Debug.LogWarning("[MDPro3iOSBuild] Info.plist not found: " + plistPath); return; }
+        var doc = new PlistDocument();
+        doc.ReadFromFile(plistPath);
+        doc.root.SetBoolean("UIFileSharingEnabled", true);
+        doc.root.SetBoolean("LSSupportsOpeningDocumentsInPlace", true);
+        doc.WriteToFile(plistPath);
+        Debug.Log("[MDPro3iOSBuild] file sharing enabled (UIFileSharingEnabled + LSSupportsOpeningDocumentsInPlace)");
     }
 
     // --- 原生静态库插件配置:Assets/Plugins/iOS/lib*.a ---
